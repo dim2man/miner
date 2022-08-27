@@ -1,0 +1,2 @@
+# miner
+Miner browser game
