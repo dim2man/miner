@@ -72,7 +72,16 @@
 			button.classList.add('opened');
 			button.disabled = true;
 			if ((field[row][col] & 0x0f) === MINE) {
-				button.replaceChild(document.createTextNode(BOMB), button.firstChild);
+				for(let i=0; i<ROWS; i++) {
+					for(let j=0; j<COLS; j++) {
+						if ((field[i][j] & 0x0f) === MINE) {
+							const button = table.rows[i].cells[j].firstChild;
+							button.replaceChild(document.createTextNode(BOMB), button.firstChild);
+							button.classList.add('opened');
+							button.disabled = true;
+						}
+					}
+				}
 				button.classList.add('expoited');
 				fail.classList.remove('hidden');
 				return;
