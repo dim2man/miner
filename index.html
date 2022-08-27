@@ -4,11 +4,205 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Минёр</title>
 	<style>
-		* {font-family: Arial;font-size: 20px;}
-		h1 {font-size: 2rem;text-align:  center;}
+		* {font-family: Arial;font-size: 20px; box-sizing: border-box;}
+		h1 {font-size: 2rem;text-align: center;}
+		p {font-size: 1rem;text-align: center;}
+		main {margin: auto;position: relative;}
+		main > div {position: absolute;top: 0;left: 0;bottom: 0;right: 0;background-color: rgba(255,255,255,0.7);display: flex;justify-content: space-around;align-items: center;}
+		table {margin: auto;}
+		button {border-radius: 0;width: 1.4rem;height: 1.4rem;font-size: 0.8rem;vertical-align: middle;text-align: center;border: 2px outset #e3e3e3;color: black;}
+		button.opened {border-style: inset;}
+		button.expoited {background: #c00;}
+		.hidden {display: none}
 	</style>
+	<script>
+		// Установки
+		let ROWS = 5, COLS = 5, PCENT = 0.15;
+		try {
+			const params = new URLSearchParams(location.search);
+			if (params.has('rows')) ROWS = +params.get('rows');
+			if (params.has('cols')) COLS = +params.get('cols');
+			if (params.has('pcent')) PCENT = +params.get('pcent')/100;
+		} catch(e) {
+			console.error('URLSearchParams failed or not supported');
+		}
+		// Состояния клетки
+		const EMPTY = 0, MINE = 9;
+		// Флаги клетки
+		const OPEN = 0x20, FLAG = 0x10;
+		// Картинки
+		const SPACE = '\xa0', BOMB = '💣', TFLAG = '🚩';
+		// DOM
+		let table, fail, victory;
+		// data
+		const field = new Array(ROWS);
+		let timer = null;
+
+		function checkVictory() {
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					if (!(field[i][j] & OPEN) && (field[i][j] & 0x0f) !== MINE) return;
+				}
+			}
+			victory.classList.remove('hidden');
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					if ((field[i][j] & 0x0f) === MINE) {
+						const button = table.rows[i].cells[j].firstChild;
+						button.replaceChild(document.createTextNode(BOMB), button.firstChild);
+						button.classList.add('opened');
+						button.disabled = true;
+					}
+				}
+			}
+		}
+
+		function scheduleCheckVictory() {
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(checkVictory, 0);
+		}
+
+		function openCell(row, col) {
+			if (!field[row] || typeof field[row][col] !== 'number') return 0;
+			if (field[row][col] & OPEN || field[row][col] & FLAG) {
+				return;
+			}
+			const button = table.rows[row].cells[col].firstChild;
+			field[row][col] = field[row][col] ^ OPEN;
+			button.classList.add('opened');
+			button.disabled = true;
+			if ((field[row][col] & 0x0f) === MINE) {
+				button.replaceChild(document.createTextNode(BOMB), button.firstChild);
+				button.classList.add('expoited');
+				fail.classList.remove('hidden');
+				return;
+			}
+			button.replaceChild(document.createTextNode((field[row][col] & 0x0f) || SPACE), button.firstChild);
+			if ((field[row][col] & 0x0f) === EMPTY) {
+				openCell(row-1, col-1);
+				openCell(row-1, col);
+				openCell(row-1, col+1);
+				openCell(row, col-1);
+				openCell(row, col);
+				openCell(row, col+1);
+				openCell(row+1, col-1);
+				openCell(row+1, col);
+				openCell(row+1, col+1);
+			}
+			scheduleCheckVictory();
+		}
+
+		function handleClick(e) {
+			e.preventDefault();
+			const button = e.target;
+			const row = Number(button.dataset.row);
+			const col = Number(button.dataset.col);
+			openCell(row, col);
+		}
+
+		function handleContextMenu(e) {
+			e.preventDefault();
+			const button = e.target;
+			const row = Number(button.dataset.row);
+			const col = Number(button.dataset.col);
+			if (field[row][col] & OPEN) {
+				return;
+			}
+			field[row][col] = field[row][col] ^ FLAG;
+			button.replaceChild(document.createTextNode(field[row][col] & FLAG ? TFLAG : SPACE), button.firstChild);
+		}
+
+		function genTable() {
+			table.cellPadding = 0;
+			table.cellSpacing = 0;
+			for(let i=0; i<ROWS; i++) {
+				const row = table.insertRow();
+				for(let j=0; j<COLS; j++) {
+					const col = row.insertCell();
+					const button = document.createElement('button');
+					button.appendChild(document.createTextNode(SPACE));
+					button.dataset.row = i;
+					button.dataset.col = j;
+					button.addEventListener('click', handleClick);
+					button.addEventListener('contextmenu', handleContextMenu);
+					col.appendChild(button);
+				}				
+			}
+		}
+
+		function genField() {
+			for(let i=0; i<ROWS; i++) {
+				const cols = new Array(COLS);
+				field[i] = cols;
+				for(let j=0; j<COLS; j++) {
+					cols[j] = EMPTY;
+				}
+			}
+		}
+
+		function isMine(i, j) {
+			if (!field[i] || typeof field[i][j] !== 'number') return 0;
+			return field[i][j] === MINE ? 1 : 0;
+		}
+
+		function genMines() {
+			const pairs = new Array(ROWS*COLS);
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					pairs[i*COLS + j] = [i,j];
+				}
+			}
+			const minecount = Math.round(pairs.length * PCENT);
+			for(let i=0; i<minecount; i++) {
+				const p = Math.floor(Math.random() * pairs.length);
+				const pair = pairs[p];
+				field[pair[0]][pair[1]] = MINE;
+				pairs.splice(p, 1);
+			}
+			// считаем число мин рядом с клеткой
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					if (field[i][j] === MINE) continue;
+					field[i][j] = isMine(i-1, j-1) + isMine(i-1, j) + isMine(i-1, j+1) + isMine(i, j-1) + isMine(i, j) + isMine(i, j+1) + isMine(i+1, j-1) + isMine(i+1, j) + isMine(i+1, j+1);
+				}
+			}
+		}
+
+		function clickOnRandom(value = EMPTY) {
+			const pairs = [];
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					if (field[i][j] === value) {
+						pairs.push([i,j]);
+					}
+				}
+			}
+			if (pairs.length > 0) {
+				const index = Math.floor(Math.random() * pairs.length);
+				openCell(pairs[index][0], pairs[index][1]);
+			} else {
+				clickOnRandom(value+1);
+			}
+		}
+
+		window.onload = function() {
+			table = document.getElementsByTagName('table')[0];
+			fail = document.getElementById('fail');
+			victory = document.getElementById('victory');
+			genTable();
+			genField();
+			genMines();
+			clickOnRandom();
+		}
+	</script>
 </head>
 <body>
 <h1>Игра минёр</h1>
+<p>Клик левой - раскоп, правой - флаг</p>
+<main>
+<table></table>
+<div id="fail" class="hidden"><div>Сапёр ошибается только один раз...</div></div>
+<div id="victory" class="hidden"><div>Победа!</div></div>
+</main>
 </body>
 </html>
