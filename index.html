@@ -18,12 +18,13 @@
 	</style>
 	<script>
 		// Установки
-		let ROWS = 5, COLS = 5, PCENT = 0.15;
+		let ROWS = 5, COLS = 5, PCENT = 0.15, MODE = 'dig';
 		try {
 			const params = new URLSearchParams(location.search);
 			if (params.has('rows')) ROWS = +params.get('rows');
 			if (params.has('cols')) COLS = +params.get('cols');
 			if (params.has('pcent')) PCENT = +params.get('pcent')/100;
+			if (params.has('mode')) MODE = params.get('mode');
 		} catch(e) {
 			console.error('URLSearchParams failed or not supported');
 		}
@@ -34,7 +35,7 @@
 		// Картинки
 		const SPACE = '\xa0', BOMB = '💣', TFLAG = '🚩';
 		// DOM
-		let table, fail, victory, dig;
+		let table, fail, victory, dig, flg;
 		// data
 		const field = new Array(ROWS);
 		let timer = null;
@@ -217,12 +218,17 @@
 			genField();
 			genMines();
 			clickOnRandom();
+			if (MODE === 'dig') {
+				dig.click();
+			} else {
+				document.getElementById('flag').click();
+			}
 		}
 	</script>
 </head>
 <body>
 <h1>Игра сапёр</h1>
-<p><input id="dig" name="mode" type="radio" value="dig" checked><label for="dig">Раскоп</label><input id="flag" name="mode" type="radio" value="flag"><label for="flag">Флаг</label></p>
+<p><input id="dig" name="mode" type="radio" value="dig"><label for="dig">Раскоп</label><input id="flag" name="mode" type="radio" value="flag"><label for="flag">Флаг</label></p>
 <main>
 <table></table>
 <div id="fail" class="hidden"><div>Сапёр ошибается только один раз...</div></div>
