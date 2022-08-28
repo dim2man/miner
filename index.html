@@ -7,13 +7,14 @@
 		* {font-family: Arial;font-size: 20px; box-sizing: border-box;}
 		h1 {font-size: 2rem;text-align: center;}
 		p {font-size: 1rem;text-align: center;}
+		label {padding: 0.2rem 0.5rem;border: 2px outset #e3e3e3;background: #d0d0d0;}
 		main {margin: auto;position: relative;}
 		main > div {position: absolute;top: 0;left: 0;bottom: 0;right: 0;background-color: rgba(255,255,255,0.7);display: flex;justify-content: space-around;align-items: center;}
 		table {margin: auto;}
-		button {border-radius: 0;width: 1.4rem;height: 1.4rem;font-size: 0.8rem;vertical-align: middle;text-align: center;border: 2px outset #e3e3e3;color: black;}
-		button.opened {border-style: inset;}
+		button {border-radius: 0;width: 1.4rem;height: 1.4rem;font-size: 0.8rem;vertical-align: middle;text-align: center;border: 2px outset #e3e3e3;color: black;background: #d0d0d0;}
+		:checked + label, button.opened {border-style: inset;background: #e9e9e9;}
 		button.expoited {background: #c00;}
-		.hidden {display: none}
+		input, .hidden {display: none}
 	</style>
 	<script>
 		// Установки
@@ -33,7 +34,7 @@
 		// Картинки
 		const SPACE = '\xa0', BOMB = '💣', TFLAG = '🚩';
 		// DOM
-		let table, fail, victory;
+		let table, fail, victory, dig;
 		// data
 		const field = new Array(ROWS);
 		let timer = null;
@@ -51,7 +52,6 @@
 						const button = table.rows[i].cells[j].firstChild;
 						button.replaceChild(document.createTextNode(BOMB), button.firstChild);
 						button.classList.add('opened');
-						button.disabled = true;
 					}
 				}
 			}
@@ -70,7 +70,6 @@
 			const button = table.rows[row].cells[col].firstChild;
 			field[row][col] = field[row][col] ^ OPEN;
 			button.classList.add('opened');
-			button.disabled = true;
 			if ((field[row][col] & 0x0f) === MINE) {
 				for(let i=0; i<ROWS; i++) {
 					for(let j=0; j<COLS; j++) {
@@ -78,7 +77,6 @@
 							const button = table.rows[i].cells[j].firstChild;
 							button.replaceChild(document.createTextNode(BOMB), button.firstChild);
 							button.classList.add('opened');
-							button.disabled = true;
 						}
 					}
 				}
@@ -88,17 +86,21 @@
 			}
 			button.replaceChild(document.createTextNode((field[row][col] & 0x0f) || SPACE), button.firstChild);
 			if ((field[row][col] & 0x0f) === EMPTY) {
-				openCell(row-1, col-1);
-				openCell(row-1, col);
-				openCell(row-1, col+1);
-				openCell(row, col-1);
-				openCell(row, col);
-				openCell(row, col+1);
-				openCell(row+1, col-1);
-				openCell(row+1, col);
-				openCell(row+1, col+1);
+				openNeighbors(row, col);
 			}
 			scheduleCheckVictory();
+		}
+
+		function openNeighbors(row, col) {
+			openCell(row-1, col-1);
+			openCell(row-1, col);
+			openCell(row-1, col+1);
+			openCell(row, col-1);
+			openCell(row, col);
+			openCell(row, col+1);
+			openCell(row+1, col-1);
+			openCell(row+1, col);
+			openCell(row+1, col+1);
 		}
 
 		function handleClick(e) {
@@ -106,18 +108,26 @@
 			const button = e.target;
 			const row = Number(button.dataset.row);
 			const col = Number(button.dataset.col);
-			openCell(row, col);
+			if (dig.checked) {
+				openCell(row, col);
+			} else {
+				toggleFlag(row, col);
+			}
 		}
 
-		function handleContextMenu(e) {
-			e.preventDefault();
-			const button = e.target;
-			const row = Number(button.dataset.row);
-			const col = Number(button.dataset.col);
+		function toggleFlag(row, col) {
 			if (field[row][col] & OPEN) {
+				// клик в режиме флага на открытую клетку откроет все закрытые клетки вокруг неё, если количество флагов совпадёт с числом рядомстоящих бомб
+				const cellValue = field[row][col] & 0x0f;
+				if (cellValue === EMPTY) return;
+				const flagCount = isFlag(row-1, col-1) + isFlag(row-1, col) + isFlag(row-1, col+1) + isFlag(row, col-1) + isFlag(row, col) + isFlag(row, col+1) + isFlag(row+1, col-1) + isFlag(row+1, col) + isFlag(row+1, col+1);
+				if (cellValue === flagCount) {
+					openNeighbors(row, col);
+				}
 				return;
 			}
 			field[row][col] = field[row][col] ^ FLAG;
+			const button = table.rows[row].cells[col].firstChild;
 			button.replaceChild(document.createTextNode(field[row][col] & FLAG ? TFLAG : SPACE), button.firstChild);
 		}
 
@@ -133,7 +143,6 @@
 					button.dataset.row = i;
 					button.dataset.col = j;
 					button.addEventListener('click', handleClick);
-					button.addEventListener('contextmenu', handleContextMenu);
 					col.appendChild(button);
 				}				
 			}
@@ -147,6 +156,11 @@
 					cols[j] = EMPTY;
 				}
 			}
+		}
+
+		function isFlag(i, j) {
+			if (!field[i] || typeof field[i][j] !== 'number') return 0;
+			return field[i][j] & FLAG ? 1 : 0;
 		}
 
 		function isMine(i, j) {
@@ -198,6 +212,7 @@
 			table = document.getElementsByTagName('table')[0];
 			fail = document.getElementById('fail');
 			victory = document.getElementById('victory');
+			dig = document.getElementById('dig');
 			genTable();
 			genField();
 			genMines();
@@ -207,7 +222,7 @@
 </head>
 <body>
 <h1>Игра сапёр</h1>
-<p>Клик левой - раскоп, правой - флаг</p>
+<p><input id="dig" name="mode" type="radio" value="dig" checked><label for="dig">Раскоп</label><input id="flag" name="mode" type="radio" value="flag"><label for="flag">Флаг</label></p>
 <main>
 <table></table>
 <div id="fail" class="hidden"><div>Сапёр ошибается только один раз...</div></div>
