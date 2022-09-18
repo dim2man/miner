@@ -7,14 +7,19 @@
 		* {font-family: Arial;font-size: 20px; box-sizing: border-box;}
 		h1 {font-size: 2rem;text-align: center;}
 		p {font-size: 1rem;text-align: center;}
-		label {padding: 0.2rem 0.5rem;border: 2px outset #e3e3e3;background: #d0d0d0;}
+		.button {padding: 0.2rem 0.5rem;border: 2px outset #e3e3e3;background: #d0d0d0;}
 		main {margin: auto;position: relative;}
 		main > div {position: absolute;top: 0;left: 0;bottom: 0;right: 0;background-color: rgba(255,255,255,0.7);display: flex;justify-content: space-around;align-items: center;}
 		table {margin: auto;}
-		button {border-radius: 0;width: 1.4rem;height: 1.4rem;font-size: 0.8rem;vertical-align: middle;text-align: center;border: 2px outset #e3e3e3;color: black;background: #d0d0d0;}
+		button.cell {border-radius: 0;width: 1.4rem;height: 1.4rem;font-size: 0.8rem;vertical-align: middle;text-align: center;border: 2px outset #e3e3e3;color: black;background: #d0d0d0;}
 		:checked + label, button.opened {border-style: inset;background: #e9e9e9;}
-		button.expoited {background: #c00;}
+		button.cell.expoited {background: #c00;}
 		input, .hidden {display: none}
+		div#menu {display: flex; flex-flow: row nowrap; justify-content: space-between; align-items: center;}
+		.menu-group {flex-basis: 1px; flex-grow: 1; display: flex; flex-flow: column nowrap;}
+		.menu-group-left {align-items: flex-start;}
+		.menu-group-center {align-items: center;}
+		.menu-group-right {align-items: flex-end;}
 	</style>
 	<script>
 		// Установки
@@ -35,61 +40,71 @@
 		// Картинки
 		const SPACE = '\xa0', BOMB = '💣', TFLAG = '🚩';
 		// DOM
-		let table, fail, victory, dig, flg;
+		let table, fail, victory, dig, flg, replay;
 		// data
 		const field = new Array(ROWS);
 		let timer = null;
 
-		function checkVictory() {
+		function openAllMines() {
 			for(let i=0; i<ROWS; i++) {
 				for(let j=0; j<COLS; j++) {
-					if (!(field[i][j] & OPEN) && (field[i][j] & 0x0f) !== MINE) return;
-				}
-			}
-			victory.classList.remove('hidden');
-			for(let i=0; i<ROWS; i++) {
-				for(let j=0; j<COLS; j++) {
-					if ((field[i][j] & 0x0f) === MINE) {
-						const button = table.rows[i].cells[j].firstChild;
-						button.replaceChild(document.createTextNode(BOMB), button.firstChild);
-						button.classList.add('opened');
+					if ((field[i][j] & 0x0f) === MINE && !(field[i][j] & OPEN)) {
+						field[i][j] = field[i][j] ^ OPEN;
+						getAndDrawButton(i, j);
 					}
 				}
 			}
 		}
 
-		function scheduleCheckVictory() {
-			if (timer) clearTimeout(timer);
-			timer = setTimeout(checkVictory, 0);
-		}
-
-		function openCell(row, col) {
-			if (!field[row] || typeof field[row][col] !== 'number') return 0;
-			if (field[row][col] & OPEN || field[row][col] & FLAG) {
-				return;
-			}
-			const button = table.rows[row].cells[col].firstChild;
-			field[row][col] = field[row][col] ^ OPEN;
-			button.classList.add('opened');
-			if ((field[row][col] & 0x0f) === MINE) {
-				for(let i=0; i<ROWS; i++) {
-					for(let j=0; j<COLS; j++) {
+		function checkVictoryOrFail() {
+			let shouldBeOpenedCount = 0;
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					if (field[i][j] & OPEN) {
 						if ((field[i][j] & 0x0f) === MINE) {
-							const button = table.rows[i].cells[j].firstChild;
-							button.replaceChild(document.createTextNode(BOMB), button.firstChild);
-							button.classList.add('opened');
+							// Fail game
+							openAllMines();
+							fail.classList.remove('hidden');
+							return;
+						}
+					} else {
+						if ((field[i][j] & 0x0f) !== MINE) {
+							shouldBeOpenedCount++;
 						}
 					}
 				}
-				button.classList.add('expoited');
-				fail.classList.remove('hidden');
+			}
+			if (shouldBeOpenedCount > 0) {
 				return;
 			}
-			button.replaceChild(document.createTextNode((field[row][col] & 0x0f) || SPACE), button.firstChild);
-			if ((field[row][col] & 0x0f) === EMPTY) {
-				openNeighbors(row, col);
+			openAllMines();
+			victory.classList.remove('hidden');
+		}
+
+		function scheduleCheckVictoryOrFail() {
+			if (timer) clearTimeout(timer);
+			timer = setTimeout(checkVictoryOrFail, 0);
+		}
+
+		function guard(row, col) {
+			return !field[row] || typeof field[row][col] !== 'number';
+		}
+
+		function openCell(row, col) {
+			if (guard(row, col)) return;
+			if (field[row][col] & OPEN || field[row][col] & FLAG) {
+				return;
 			}
-			scheduleCheckVictory();
+			field[row][col] = field[row][col] ^ OPEN;
+			const button = getAndDrawButton(row, col);
+			if ((field[row][col] & 0x0f) === MINE) {
+				button.classList.add('expoited');
+			} else {
+				if ((field[row][col] & 0x0f) === EMPTY) {
+					openNeighbors(row, col);
+				}
+			}
+			scheduleCheckVictoryOrFail();
 		}
 
 		function openNeighbors(row, col) {
@@ -97,11 +112,48 @@
 			openCell(row-1, col);
 			openCell(row-1, col+1);
 			openCell(row, col-1);
-			openCell(row, col);
 			openCell(row, col+1);
 			openCell(row+1, col-1);
 			openCell(row+1, col);
 			openCell(row+1, col+1);
+		}
+
+		function checkFlagsAndOpenNeighbors(row, col) {
+			const value = field[row][col] & 0x0f;
+			if (value === EMPTY) return;
+			const flagCount = isFlag(row-1, col-1) + isFlag(row-1, col) + isFlag(row-1, col+1) + isFlag(row, col-1) + isFlag(row, col) + isFlag(row, col+1) + isFlag(row+1, col-1) + isFlag(row+1, col) + isFlag(row+1, col+1);
+			if (value === flagCount) {
+				openNeighbors(row, col);
+			}
+		}
+
+		function toggleFlag(row, col) {
+			if (field[row][col] & OPEN) {
+				// клик в режиме флага на открытую клетку откроет все закрытые клетки вокруг неё, если количество флагов совпадёт с числом рядомстоящих бомб
+				checkFlagsAndOpenNeighbors(row, col);
+				return;
+			}
+			field[row][col] = field[row][col] ^ FLAG;
+			getAndDrawButton(row, col);
+		}
+
+		function getAndDrawButton(row, col, button = null) {
+			const value = field[row][col];
+			if (!button) {
+				button = table.rows[row].cells[col].firstChild;
+			}
+			if (value & OPEN) {
+				button.classList.add('opened');
+				if ((value & 0x0f) === MINE) {
+					button.replaceChild(document.createTextNode(BOMB), button.firstChild);
+				} else {
+					button.replaceChild(document.createTextNode((value & 0x0f) || SPACE), button.firstChild);
+				}
+			} else {
+				button.classList.remove('opened');
+				button.replaceChild(document.createTextNode(value & FLAG ? TFLAG : SPACE), button.firstChild);
+			}
+			return button;
 		}
 
 		function handleClick(e) {
@@ -116,23 +168,7 @@
 			}
 		}
 
-		function toggleFlag(row, col) {
-			if (field[row][col] & OPEN) {
-				// клик в режиме флага на открытую клетку откроет все закрытые клетки вокруг неё, если количество флагов совпадёт с числом рядомстоящих бомб
-				const cellValue = field[row][col] & 0x0f;
-				if (cellValue === EMPTY) return;
-				const flagCount = isFlag(row-1, col-1) + isFlag(row-1, col) + isFlag(row-1, col+1) + isFlag(row, col-1) + isFlag(row, col) + isFlag(row, col+1) + isFlag(row+1, col-1) + isFlag(row+1, col) + isFlag(row+1, col+1);
-				if (cellValue === flagCount) {
-					openNeighbors(row, col);
-				}
-				return;
-			}
-			field[row][col] = field[row][col] ^ FLAG;
-			const button = table.rows[row].cells[col].firstChild;
-			button.replaceChild(document.createTextNode(field[row][col] & FLAG ? TFLAG : SPACE), button.firstChild);
-		}
-
-		function genTable() {
+		function drawInitialTable() {
 			table.cellPadding = 0;
 			table.cellSpacing = 0;
 			for(let i=0; i<ROWS; i++) {
@@ -140,11 +176,13 @@
 				for(let j=0; j<COLS; j++) {
 					const col = row.insertCell();
 					const button = document.createElement('button');
+					button.classList.add('cell');
 					button.appendChild(document.createTextNode(SPACE));
 					button.dataset.row = i;
 					button.dataset.col = j;
 					button.addEventListener('click', handleClick);
 					col.appendChild(button);
+					getAndDrawButton(i, j, button);
 				}				
 			}
 		}
@@ -159,17 +197,33 @@
 			}
 		}
 
+		function emptyField() {
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					field[i][j] = EMPTY;
+				}
+			}
+		}
+
+		function redrawAll() {
+			for(let i=0; i<ROWS; i++) {
+				for(let j=0; j<COLS; j++) {
+					getAndDrawButton(i, j);
+				}
+			}
+		}
+
 		function isFlag(i, j) {
-			if (!field[i] || typeof field[i][j] !== 'number') return 0;
+			if (guard(i, j)) return 0;
 			return field[i][j] & FLAG ? 1 : 0;
 		}
 
 		function isMine(i, j) {
-			if (!field[i] || typeof field[i][j] !== 'number') return 0;
+			if (guard(i, j)) return 0;
 			return field[i][j] === MINE ? 1 : 0;
 		}
 
-		function genMines() {
+		function genMinesAndCounts() {
 			const pairs = new Array(ROWS*COLS);
 			for(let i=0; i<ROWS; i++) {
 				for(let j=0; j<COLS; j++) {
@@ -187,7 +241,7 @@
 			for(let i=0; i<ROWS; i++) {
 				for(let j=0; j<COLS; j++) {
 					if (field[i][j] === MINE) continue;
-					field[i][j] = isMine(i-1, j-1) + isMine(i-1, j) + isMine(i-1, j+1) + isMine(i, j-1) + isMine(i, j) + isMine(i, j+1) + isMine(i+1, j-1) + isMine(i+1, j) + isMine(i+1, j+1);
+					field[i][j] = isMine(i-1, j-1) + isMine(i-1, j) + isMine(i-1, j+1) + isMine(i, j-1) + isMine(i, j+1) + isMine(i+1, j-1) + isMine(i+1, j) + isMine(i+1, j+1);
 				}
 			}
 		}
@@ -209,14 +263,28 @@
 			}
 		}
 
+		function handleReplay() {
+			fail.classList.add('hidden');
+			victory.classList.add('hidden');
+			document.querySelectorAll('.expoited').forEach(node => {
+				node.classList.remove('expoited');
+			});
+			emptyField();
+			genMinesAndCounts();
+			redrawAll();
+			clickOnRandom();
+		}
+
 		window.onload = function() {
 			table = document.getElementsByTagName('table')[0];
 			fail = document.getElementById('fail');
 			victory = document.getElementById('victory');
 			dig = document.getElementById('dig');
-			genTable();
+			replay = document.getElementById('replay');
+			replay.addEventListener('click', handleReplay);
 			genField();
-			genMines();
+			genMinesAndCounts();
+			drawInitialTable();
 			clickOnRandom();
 			if (MODE === 'dig') {
 				dig.click();
@@ -228,7 +296,13 @@
 </head>
 <body>
 <h1>Игра сапёр</h1>
-<p><input id="dig" name="mode" type="radio" value="dig"><label for="dig">Раскоп</label><input id="flag" name="mode" type="radio" value="flag"><label for="flag">Флаг</label></p>
+<div id="menu">
+	<div class="menu-group menu-group-left"></div>
+	<div class="menu-group menu-group-center">
+		<p><input id="dig" name="mode" type="radio" value="dig"><label for="dig" class="button">Раскоп</label><input id="flag" name="mode" type="radio" value="flag"><label for="flag" class="button">Флаг</label></p>
+	</div>
+	<div class="menu-group menu-group-right"><button id="replay" class="button">Заново</button></div>
+</div>
 <main>
 <table></table>
 <div id="fail" class="hidden"><div>Сапёр ошибается только один раз...</div></div>
