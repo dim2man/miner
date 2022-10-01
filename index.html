@@ -6,8 +6,7 @@
 	<style>
 		* {font-family: Arial;font-size: 20px; box-sizing: border-box;}
 		h1 {font-size: 2rem;text-align: center;}
-		p {font-size: 1rem;text-align: center;}
-		.button {padding: 0.2rem 0.5rem;border: 2px outset #e3e3e3;background: #d0d0d0;}
+		.button {display: flex;padding: 0;border: 2px outset #e3e3e3;background: #d0d0d0;width: 2rem;height: 2rem;justify-content: center;align-items: center;}
 		main {margin: auto;position: relative;}
 		main > div {position: absolute;top: 0;left: 0;bottom: 0;right: 0;background-color: rgba(255,255,255,0.7);display: flex;justify-content: space-around;align-items: center;}
 		table {margin: auto;}
@@ -15,11 +14,11 @@
 		:checked + label, button.opened {border-style: inset;background: #e9e9e9;}
 		button.cell.expoited {background: #c00;}
 		input, .hidden {display: none}
-		div#menu {display: flex; flex-flow: row nowrap; justify-content: space-between; align-items: center;}
-		.menu-group {flex-basis: 1px; flex-grow: 1; display: flex; flex-flow: column nowrap;}
-		.menu-group-left {align-items: flex-start;}
-		.menu-group-center {align-items: center;}
-		.menu-group-right {align-items: flex-end;}
+		h2 {display: flex; flex-flow: row nowrap; justify-content: space-between; align-items: center;}
+		.menu-group {flex-basis: 1px; flex-grow: 1; display: flex; flex-flow: row wrap;}
+		.menu-group-left {justify-content: flex-start;}
+		.menu-group-center {justify-content: center;}
+		.menu-group-right {justify-content: flex-end;}
 	</style>
 	<script>
 		// Установки
@@ -296,13 +295,13 @@
 </head>
 <body>
 <h1>Игра сапёр</h1>
-<div id="menu">
+<h2>
 	<div class="menu-group menu-group-left"></div>
 	<div class="menu-group menu-group-center">
-		<p><input id="dig" name="mode" type="radio" value="dig"><label for="dig" class="button">Раскоп</label><input id="flag" name="mode" type="radio" value="flag"><label for="flag" class="button">Флаг</label></p>
+		<input id="dig" name="mode" type="radio" value="dig"><label for="dig" class="button"><svg width="26px" height="26px" viewBox="0 0 512 512"><g transform="translate(0,512) scale(0.1,-0.1)" fill="#000000" stroke="none"><path d="M3695 4776 c-16 -7 -92 -77 -168 -154 -150 -153 -177 -196 -197 -313 -21 -119 23 -260 107 -345 l39 -39 -720 -722 -720 -722 -177 174 c-150 149 -186 179 -245 207 -64 31 -76 33 -174 33 -99 0 -109 -2 -175 -34 -61 -29 -94 -58 -255 -220 -269 -271 -362 -393 -482 -634 -115 -230 -182 -491 -194 -762 -15 -319 55 -564 204 -713 38 -39 94 -82 129 -100 186 -98 575 -130 868 -72 275 54 556 180 790 355 44 33 176 154 293 269 174 172 218 222 242 271 36 72 50 163 38 248 -15 112 -44 155 -242 355 l-180 183 721 721 722 722 51 -48 c28 -26 76 -59 108 -74 51 -24 69 -27 167 -27 161 0 196 19 387 212 137 138 147 151 153 195 14 92 18 88 -449 557 -237 238 -451 446 -475 462 -50 32 -114 38 -166 15z m810 -1116 c-125 -126 -181 -160 -260 -160 -94 0 -125 24 -437 337 -279 281 -287 290 -303 347 -15 50 -16 68 -6 109 15 64 34 91 160 220 l105 108 426 -426 425 -425 -110 -110z m-1612 -962 c-500 -500 -922 -915 -940 -923 -106 -50 -203 27 -195 155 2 19 230 252 924 947 l923 923 97 -97 98 -98 -907 -907z m-1378 21 c32 -9 75 -45 217 -187 l178 -176 -138 -140 c-166 -170 -186 -204 -186 -321 0 -62 5 -90 22 -125 57 -116 139 -171 268 -178 126 -7 165 15 337 186 l137 137 171 -170 c117 -116 178 -184 191 -214 27 -60 26 -135 -2 -192 -26 -51 -273 -305 -405 -417 -240 -202 -522 -339 -815 -394 -94 -18 -152 -22 -315 -23 -180 0 -208 2 -280 23 -109 32 -185 75 -245 138 -65 68 -96 136 -120 263 -66 340 -9 696 166 1029 105 201 185 304 423 546 221 224 269 250 396 215z"/></g></svg></label><input id="flag" name="mode" type="radio" value="flag"><label for="flag" class="button"><span>🚩</span></label>
 	</div>
-	<div class="menu-group menu-group-right"><button id="replay" class="button">Заново</button></div>
-</div>
+	<div class="menu-group menu-group-right"><button id="replay" class="button"><span>⟲</span></button></div>
+</h2>
 <main>
 <table></table>
 <div id="fail" class="hidden"><div>Сапёр ошибается только один раз...</div></div>
